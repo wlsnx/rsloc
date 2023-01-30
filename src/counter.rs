@@ -1,19 +1,14 @@
+use bit_set::BitSet;
 use proc_macro2::{Span, TokenStream, TokenTree};
-use serde::Serialize;
-use syn::{spanned::Spanned, visit::Visit, *};
+use syn::{visit::Visit, *};
 
-#[derive(Default, Debug, Serialize)]
+#[derive(Default, Debug)]
 pub struct Counter {
-    pub lines: usize,
+    pub lines: BitSet,
     pub doc_lines: usize,
-    pub test_lines: usize,
 }
 
-impl Counter {
-    fn total(&self) -> usize {
-        self.lines + self.test_lines + self.doc_lines
-    }
-}
+impl Counter {}
 
 fn has_test(tokens: TokenStream) -> bool {
     tokens.into_iter().any(|token| match token {
@@ -39,7 +34,7 @@ fn is_test(attr: &Attribute) -> bool {
     false
 }
 
-fn lines(span: Span) -> usize {
+fn lines(span: &Span) -> usize {
     span.end().line - span.start().line + 1
 }
 
@@ -47,11 +42,8 @@ macro_rules! count {
     ($($method: ident, $ty: ident),*) => {
         $(
             fn $method(&mut self, i: &'ast $ty) {
-                let lines = lines(i.span());
-                if i.attrs.iter().any(is_test) {
-                    self.test_lines += lines;
-                } else {
-                    self.lines += lines;
+                if !i.attrs.iter().any(is_test) {
+                    visit::$method(self, i);
                 }
             }
         )*
@@ -62,10 +54,26 @@ impl<'ast> Visit<'ast> for Counter {
     fn visit_attribute(&mut self, i: &'ast Attribute) {
         if let Some(ident) = i.path.get_ident() {
             if ident.to_string() == "doc" {
-                self.doc_lines += lines(ident.span());
+                self.doc_lines += lines(&ident.span());
             }
         }
         visit::visit_attribute(self, i);
+    }
+
+    fn visit_span(&mut self, i: &Span) {
+        let start = i.start().line;
+        let end = i.end().line;
+        self.lines.insert(start);
+        if end != start {
+            self.lines.insert(end);
+        }
+    }
+
+    fn visit_lit_str(&mut self, i: &'ast LitStr) {
+        let span = i.span();
+        (span.start().line..=span.end().line).for_each(|i| {
+            self.lines.insert(i);
+        });
     }
 
     count!(

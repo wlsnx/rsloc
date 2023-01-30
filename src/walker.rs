@@ -1,6 +1,5 @@
 use crate::counter::Counter;
 use ignore::Walk;
-use serde::Serialize;
 use std::{
     collections::HashMap,
     fs::File,
@@ -9,7 +8,7 @@ use std::{
 };
 use syn::visit::Visit;
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default)]
 pub struct Walker {
     pub lines: usize,
     pub doc_lines: usize,
@@ -20,9 +19,8 @@ pub struct Walker {
 
 impl Walker {
     fn merge(&mut self, path: PathBuf, counter: Counter) {
-        self.lines += counter.lines;
+        self.lines += counter.lines.len();
         self.doc_lines += counter.doc_lines;
-        self.test_lines += counter.test_lines;
         let parent = path.parent().unwrap().to_path_buf();
         self.files.insert(path.clone(), counter);
         let dir = self.dirs.entry(parent).or_default();

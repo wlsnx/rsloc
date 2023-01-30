@@ -7,8 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.68"
+bit-set = "0.5.3"
 ignore = "0.4.20"
 proc-macro2 = { version = "1.0.50", features = ["span-locations"] }
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
 syn = { version = "1.0.107", features = ["full", "extra-traits", "visit"] }

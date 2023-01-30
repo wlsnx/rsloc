@@ -7,5 +7,5 @@ fn main() {
     let path = args.next().unwrap_or(".".to_string());
     let mut walker = Walker::default();
     walker.walk(path);
-    println!("{}", serde_json::to_string(&walker).unwrap());
+    dbg!(walker);
 }
