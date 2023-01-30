@@ -1,0 +1,11 @@
+[package]
+name = "rsloc"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bit-set = "0.5.3"
+proc-macro2 = { version = "1.0.50", features = ["span-locations"] }
+syn = { version = "1.0.107", features = ["full", "extra-traits", "visit"] }
