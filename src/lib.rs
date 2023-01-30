@@ -1,1 +1,2 @@
-pub mod counter;
+mod counter;
+pub mod walker;
