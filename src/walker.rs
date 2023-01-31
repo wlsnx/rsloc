@@ -1,6 +1,6 @@
 use crate::counter::Counter;
-use anyhow::{bail, Result};
-use ignore::{DirEntry, Walk};
+use anyhow::Result;
+use ignore::WalkBuilder;
 use itertools::Itertools;
 use std::{
     collections::HashMap,
@@ -16,16 +16,11 @@ pub struct Walker {
     files: HashMap<PathBuf, usize>,
 }
 
-fn parse(entry: &DirEntry) -> Result<syn::File> {
-    let path = entry.path();
-    let extension = path.extension();
-    if entry.metadata()?.is_file() && extension.is_some_and(|e| e == "rs") {
-        let mut file = File::open(path)?;
-        let mut buf = String::new();
-        file.read_to_string(&mut buf)?;
-        return Ok(syn::parse_file(&buf)?);
-    }
-    bail!("{} is not a rust file.", path.to_string_lossy());
+fn parse(path: &Path) -> Result<syn::File> {
+    let mut file = File::open(path)?;
+    let mut buf = String::new();
+    file.read_to_string(&mut buf)?;
+    Ok(syn::parse_file(&buf)?)
 }
 
 impl Walker {
@@ -44,14 +39,22 @@ impl Walker {
     }
 
     pub fn walk<P: AsRef<Path>>(&mut self, path: P) {
-        let walker = Walk::new(path);
+        let walker = WalkBuilder::new(path)
+            .filter_entry(|entry| {
+                entry.path().extension().is_some_and(|ext| ext == "rs")
+                    || entry.file_type().is_some_and(|ty| ty.is_dir())
+            })
+            .build();
         for result in walker {
             if let Ok(entry) = result {
-                if let Ok(ast) = parse(&entry) {
-                    let mut counter = Counter::default();
-                    counter.visit_file(&ast);
-                    counter.remove_doc();
-                    self.merge(entry.path().to_path_buf(), counter);
+                let path = entry.path();
+                if path.is_file() {
+                    if let Ok(ast) = parse(&path) {
+                        let mut counter = Counter::default();
+                        counter.visit_file(&ast);
+                        counter.remove_doc();
+                        self.merge(entry.path().to_path_buf(), counter);
+                    }
                 }
             }
         }
