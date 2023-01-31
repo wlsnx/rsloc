@@ -68,15 +68,7 @@ fn visit_tokens(counter: &mut Counter, tokens: &TokenStream) {
             TokenTree::Group(g) => {
                 visit_tokens(counter, &g.stream());
             }
-            TokenTree::Literal(lit) => {
-                counter.visit_span(&lit.span());
-            }
-            TokenTree::Ident(ident) => {
-                counter.visit_span(&ident.span());
-            }
-            TokenTree::Punct(punct) => {
-                counter.visit_span(&punct.span());
-            }
+            _ => counter.visit_span(&token.span()),
         }
     }
 }
@@ -89,6 +81,7 @@ impl<'ast> Visit<'ast> for Counter {
                     .push(ident.span().start().line..=ident.span().end().line);
             }
         }
+        visit_tokens(self, &i.tokens);
         visit::visit_attribute(self, i);
     }
 
