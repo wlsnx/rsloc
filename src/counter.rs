@@ -61,6 +61,20 @@ macro_rules! count {
     }
 }
 
+macro_rules! lit {
+    ($($method: ident, $ty: ident),*) => {
+        $(
+            fn $method(&mut self, i: &'ast $ty) {
+                let span = i.span();
+                (span.start().line..=span.end().line).for_each(|i| {
+                    self.lines.insert(i);
+                });
+                visit::$method(self,i);
+            }
+        )*
+    }
+}
+
 fn visit_tokens(counter: &mut Counter, tokens: &TokenStream) {
     for token in tokens.clone() {
         counter.visit_span(&token.span());
@@ -100,12 +114,7 @@ impl<'ast> Visit<'ast> for Counter {
         visit::visit_span(self, i);
     }
 
-    fn visit_lit_str(&mut self, i: &'ast LitStr) {
-        let span = i.span();
-        (span.start().line..=span.end().line).for_each(|i| {
-            self.lines.insert(i);
-        });
-    }
+    lit!(visit_lit_str, LitStr, visit_lit_byte_str, LitByteStr);
 
     count!(
         visit_item_const,
