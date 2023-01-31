@@ -1,14 +1,29 @@
+use std::ops::RangeInclusive;
+
 use bit_set::BitSet;
 use proc_macro2::{Span, TokenStream, TokenTree};
 use syn::{visit::Visit, *};
 
 #[derive(Default, Debug)]
 pub struct Counter {
-    pub lines: BitSet,
-    pub doc_lines: usize,
+    lines: BitSet,
+    doc_lines: Vec<RangeInclusive<usize>>,
 }
 
-impl Counter {}
+impl Counter {
+    pub fn lines(&self) -> usize {
+        self.lines.len()
+    }
+
+    pub fn remove_doc(&mut self) {
+        let doc_lines = std::mem::replace(&mut self.doc_lines, vec![]);
+        for r in doc_lines {
+            r.for_each(|i| {
+                self.lines.remove(i);
+            });
+        }
+    }
+}
 
 fn has_test(tokens: TokenStream) -> bool {
     tokens.into_iter().any(|token| match token {
@@ -34,10 +49,6 @@ fn is_test(attr: &Attribute) -> bool {
     false
 }
 
-fn lines(span: &Span) -> usize {
-    span.end().line - span.start().line + 1
-}
-
 macro_rules! count {
     ($($method: ident, $ty: ident),*) => {
         $(
@@ -50,14 +61,40 @@ macro_rules! count {
     }
 }
 
+fn visit_tokens(counter: &mut Counter, tokens: &TokenStream) {
+    for token in tokens.clone() {
+        counter.visit_span(&token.span());
+        match token {
+            TokenTree::Group(g) => {
+                visit_tokens(counter, &g.stream());
+            }
+            TokenTree::Literal(lit) => {
+                counter.visit_span(&lit.span());
+            }
+            TokenTree::Ident(ident) => {
+                counter.visit_span(&ident.span());
+            }
+            TokenTree::Punct(punct) => {
+                counter.visit_span(&punct.span());
+            }
+        }
+    }
+}
+
 impl<'ast> Visit<'ast> for Counter {
     fn visit_attribute(&mut self, i: &'ast Attribute) {
         if let Some(ident) = i.path.get_ident() {
             if ident.to_string() == "doc" {
-                self.doc_lines += lines(&ident.span());
+                self.doc_lines
+                    .push(ident.span().start().line..=ident.span().end().line);
             }
         }
         visit::visit_attribute(self, i);
+    }
+
+    fn visit_macro(&mut self, i: &'ast Macro) {
+        visit_tokens(self, &i.tokens);
+        visit::visit_macro(self, i);
     }
 
     fn visit_span(&mut self, i: &Span) {
@@ -67,6 +104,7 @@ impl<'ast> Visit<'ast> for Counter {
         if end != start {
             self.lines.insert(end);
         }
+        visit::visit_span(self, i);
     }
 
     fn visit_lit_str(&mut self, i: &'ast LitStr) {

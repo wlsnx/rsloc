@@ -9,5 +9,6 @@ edition = "2021"
 anyhow = "1.0.68"
 bit-set = "0.5.3"
 ignore = "0.4.20"
+itertools = "0.10.5"
 proc-macro2 = { version = "1.0.50", features = ["span-locations"] }
 syn = { version = "1.0.107", features = ["full", "extra-traits", "visit"] }

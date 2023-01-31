@@ -7,5 +7,5 @@ fn main() {
     let path = args.next().unwrap_or(".".to_string());
     let mut walker = Walker::default();
     walker.walk(path);
-    dbg!(walker);
+    walker.print();
 }

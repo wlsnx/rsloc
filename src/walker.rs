@@ -1,5 +1,6 @@
 use crate::counter::Counter;
 use ignore::Walk;
+use itertools::Itertools;
 use std::{
     collections::HashMap,
     fs::File,
@@ -10,21 +11,21 @@ use syn::visit::Visit;
 
 #[derive(Debug, Default)]
 pub struct Walker {
-    pub lines: usize,
-    pub doc_lines: usize,
-    pub test_lines: usize,
-    pub files: HashMap<PathBuf, Counter>,
-    pub dirs: HashMap<PathBuf, Vec<PathBuf>>,
+    lines: usize,
+    files: HashMap<PathBuf, Counter>,
 }
 
 impl Walker {
     fn merge(&mut self, path: PathBuf, counter: Counter) {
-        self.lines += counter.lines.len();
-        self.doc_lines += counter.doc_lines;
-        let parent = path.parent().unwrap().to_path_buf();
+        self.lines += counter.lines();
         self.files.insert(path.clone(), counter);
-        let dir = self.dirs.entry(parent).or_default();
-        dir.push(path);
+    }
+
+    pub fn print(&self) {
+        for (path, counter) in self.files.iter().sorted_by_key(|key| key.0) {
+            println!("{:<7} {}", counter.lines(), path.to_str().unwrap());
+        }
+        println!("{:<7} {}", self.lines, "Total")
     }
 
     pub fn walk<P: AsRef<Path>>(&mut self, path: P) {
@@ -39,6 +40,7 @@ impl Walker {
                     file.read_to_string(&mut buf).unwrap();
                     let ast = syn::parse_file(&buf).unwrap();
                     counter.visit_file(&ast);
+                    counter.remove_doc();
                     self.merge(entry.path().to_path_buf(), counter);
                 }
             }
