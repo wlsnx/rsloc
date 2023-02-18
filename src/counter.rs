@@ -104,6 +104,11 @@ impl<'ast> Visit<'ast> for Counter {
         visit::visit_macro(self, i);
     }
 
+    fn visit_item_macro2(&mut self, i: &'ast ItemMacro2) {
+        visit_tokens(self, &i.rules);
+        visit::visit_item_macro2(self, i);
+    }
+
     fn visit_span(&mut self, i: &Span) {
         let start = i.start().line;
         let end = i.end().line;
@@ -131,8 +136,6 @@ impl<'ast> Visit<'ast> for Counter {
         ItemImpl,
         visit_item_macro,
         ItemMacro,
-        visit_item_macro2,
-        ItemMacro2,
         visit_item_mod,
         ItemMod,
         visit_item_static,
