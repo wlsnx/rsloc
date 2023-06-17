@@ -42,7 +42,8 @@ impl Walker {
         let walker = WalkBuilder::new(path)
             .filter_entry(|entry| {
                 entry.path().extension().is_some_and(|ext| ext == "rs")
-                    || entry.file_type().is_some_and(|ty| ty.is_dir())
+                    || (entry.file_type().is_some_and(|ty| ty.is_dir())
+                        && !entry.path().to_string_lossy().ends_with("tests"))
             })
             .build();
         for result in walker {
